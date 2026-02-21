@@ -1,4 +1,4 @@
-module artifex
+module github.com/as7ar/artifex
 
 go 1.26
 
