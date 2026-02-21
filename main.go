@@ -1,11 +1,11 @@
 package main
 
 import (
-	"artifex/commands"
-	log2 "artifex/log"
 	"log"
 	"os"
 
+	"github.com/as7ar/artifex/commands"
+	log2 "github.com/as7ar/artifex/log"
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 )
