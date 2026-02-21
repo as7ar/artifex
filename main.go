@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/as7ar/artifex/commands"
 	log2 "github.com/as7ar/artifex/log"
@@ -37,4 +40,10 @@ func main() {
 	bot := *discord.State.User
 
 	log.Println("Bot", log2.GREEN, bot.Username, log2.RESET, "is available")
+
+	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
+
 }
