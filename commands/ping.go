@@ -1,30 +1,28 @@
 package commands
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
-
-	"github.com/as7ar/artifex/embeds"
+	"github.com/as7ar/noori/config"
+	"github.com/as7ar/noori/embeds"
+	"github.com/diamondburned/arikawa/v3/gateway"
+	"github.com/diamondburned/arikawa/v3/session"
 )
 
-func PingCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
+func PingCommand(s *session.Session, c *gateway.MessageCreateEvent) {
+	now := time.Now()
+	messageTime := c.Timestamp.Time()
+	ping := now.Sub(messageTime).Milliseconds()
+
+	_, err := s.SendEmbedReply(
+		c.ChannelID, c.Message.ID,
+		embeds.New().Color(config.SymbolColor).
+			Title("🏓 PONG!").Description("`"+strconv.FormatInt(ping, 10)+"ms`").
+			Build())
+	if err != nil {
+		fmt.Println("send error:", err)
 		return
-	}
-
-	if m.Content == "!ping" {
-		now := time.Now()
-		messageTime := m.Timestamp
-		ping := messageTime.Nanosecond() - now.Nanosecond()
-
-		_, err := s.ChannelMessageSendEmbedReply(
-			m.ChannelID,
-			embeds.New().Color(0x7289da).Title("🏓 PONG!").Description("`"+strconv.Itoa(ping)+"`").Build(),
-			m.Reference())
-		if err != nil {
-			return
-		}
 	}
 }

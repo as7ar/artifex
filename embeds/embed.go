@@ -3,12 +3,12 @@ package embeds
 import (
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/diamondburned/arikawa/v3/discord"
 )
 
 const (
 	LimitTitle       = 256
-	LimitDescription = 2048
+	LimitDescription = 4096
 	LimitFieldName   = 256
 	LimitFieldValue  = 1024
 	LimitFields      = 25
@@ -16,12 +16,12 @@ const (
 )
 
 type Builder struct {
-	embed *discordgo.MessageEmbed
+	embed *discord.Embed
 }
 
 func New() *Builder {
 	return &Builder{
-		embed: &discordgo.MessageEmbed{},
+		embed: &discord.Embed{},
 	}
 }
 
@@ -36,7 +36,7 @@ func (b *Builder) Description(v string) *Builder {
 }
 
 func (b *Builder) Color(v int) *Builder {
-	b.embed.Color = v
+	b.embed.Color = discord.Color(v)
 	return b
 }
 
@@ -46,29 +46,33 @@ func (b *Builder) URL(v string) *Builder {
 }
 
 func (b *Builder) Author(name, iconURL, url string) *Builder {
-	b.embed.Author = &discordgo.MessageEmbedAuthor{
-		Name:    name,
-		IconURL: iconURL,
-		URL:     url,
+	b.embed.Author = &discord.EmbedAuthor{
+		Name: name,
+		Icon: iconURL,
+		URL:  url,
 	}
 	return b
 }
 
 func (b *Builder) Footer(text, iconURL string) *Builder {
-	b.embed.Footer = &discordgo.MessageEmbedFooter{
-		Text:    truncate(text, LimitFooter),
-		IconURL: iconURL,
+	b.embed.Footer = &discord.EmbedFooter{
+		Text: truncate(text, LimitFooter),
+		Icon: iconURL,
 	}
 	return b
 }
 
 func (b *Builder) Thumbnail(url string) *Builder {
-	b.embed.Thumbnail = &discordgo.MessageEmbedThumbnail{URL: url}
+	b.embed.Thumbnail = &discord.EmbedThumbnail{
+		URL: url,
+	}
 	return b
 }
 
 func (b *Builder) Image(url string) *Builder {
-	b.embed.Image = &discordgo.MessageEmbedImage{URL: url}
+	b.embed.Image = &discord.EmbedImage{
+		URL: url,
+	}
 	return b
 }
 
@@ -78,7 +82,6 @@ func (b *Builder) Field(name, value string, inline bool) *Builder {
 	}
 
 	name = truncate(name, LimitFieldName)
-
 	chunks := splitValue(value, LimitFieldValue)
 
 	for i, chunk := range chunks {
@@ -87,7 +90,7 @@ func (b *Builder) Field(name, value string, inline bool) *Builder {
 			fieldName = name + " (cont.)"
 		}
 
-		b.embed.Fields = append(b.embed.Fields, &discordgo.MessageEmbedField{
+		b.embed.Fields = append(b.embed.Fields, discord.EmbedField{
 			Name:   fieldName,
 			Value:  chunk,
 			Inline: inline,
@@ -97,8 +100,8 @@ func (b *Builder) Field(name, value string, inline bool) *Builder {
 	return b
 }
 
-func (b *Builder) Build() *discordgo.MessageEmbed {
-	return b.embed
+func (b *Builder) Build() discord.Embed {
+	return *b.embed
 }
 
 func truncate(s string, limit int) string {
@@ -128,7 +131,7 @@ func splitValue(s string, limit int) []string {
 	return result
 }
 
-func Generic(title, desc string) *discordgo.MessageEmbed {
+func Generic(title, desc string) discord.Embed {
 	return New().
 		Title(title).
 		Description(desc).
@@ -136,7 +139,7 @@ func Generic(title, desc string) *discordgo.MessageEmbed {
 		Build()
 }
 
-func Error(title, desc string) *discordgo.MessageEmbed {
+func Error(title, desc string) discord.Embed {
 	return New().
 		Title(title).
 		Description(desc).

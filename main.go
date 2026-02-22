@@ -1,49 +1,71 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/as7ar/artifex/commands"
-	log2 "github.com/as7ar/artifex/log"
-	"github.com/bwmarrin/discordgo"
+	"github.com/as7ar/noori/commands"
+	"github.com/as7ar/noori/config"
+	logger2 "github.com/as7ar/noori/logger"
+	"github.com/diamondburned/arikawa/v3/gateway"
+	"github.com/diamondburned/arikawa/v3/session"
+	"github.com/diamondburned/arikawa/v3/voice"
 	"github.com/joho/godotenv"
 )
 
-var (
-	TOKEN string
-)
-
 func main() {
+
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Something wrong when loading .env file", err)
+		logger2.Err("Something wrong when loading .env file", err)
 		os.Exit(-1)
 	}
 
-	TOKEN = os.Getenv("BOT_TOKEN")
+	config.TOKEN = os.Getenv("BOT_TOKEN")
 
-	discord, err := discordgo.New(TOKEN)
+	s := session.NewWithIntents("Bot "+config.TOKEN,
+		gateway.IntentGuilds, gateway.IntentGuildVoiceStates, gateway.IntentGuildMessages)
 
-	if discord == nil {
-		log.Println("Something wrong", err)
+	if s == nil {
+		logger2.Err("Something wrong", err)
 		os.Exit(-1)
 	}
 
-	discord.AddHandler(commands.PingCommand)
+	s.AddHandler(func(c *gateway.MessageCreateEvent) {
+		if c.Author.Bot {
+			return
+		}
+		logger2.Debug("received:", c.Content)
+	})
+	s.AddHandler(commands.CommandHandler)
 
-	_ = discord.Open()
+	if err := s.Open(context.Background()); err != nil {
+		log.Fatalln("Failed to connect:", err)
+	}
+	defer func(s *session.Session) {
+		err := s.Close()
+		if err != nil {
+			logger2.Err(err)
+		}
+	}(s)
 
-	bot := *discord.State.User
+	u, err := s.Me()
+	if err != nil {
+		log.Fatalln("Failed to get myself:", err)
+	}
 
-	log.Println("Bot", log2.GREEN, bot.Username, log2.RESET, "is available")
+	if u != nil {
+		log.Println("Bot", u.Username, "is available")
+	}
 
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	v, err := voice.NewSession(s)
+	if err != nil {
+		log.Fatalln("failed to create voice session:", err)
+	}
 
+	config.VOICE = v
+	config.DISCORD = s
+
+	select {}
 }
