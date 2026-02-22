@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/diamondburned/arikawa/v3 v3.6.0 // indirect
+	github.com/diamondburned/oggreader v0.0.0-20201118014549-87df9534b647 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect

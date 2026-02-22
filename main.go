@@ -8,8 +8,11 @@ import (
 	"github.com/as7ar/noori/commands"
 	"github.com/as7ar/noori/config"
 	logger2 "github.com/as7ar/noori/logger"
+	noori2 "github.com/as7ar/noori/noori"
 	"github.com/diamondburned/arikawa/v3/gateway"
 	"github.com/diamondburned/arikawa/v3/session"
+	"github.com/diamondburned/arikawa/v3/state"
+	"github.com/diamondburned/arikawa/v3/state/store/defaultstore"
 	"github.com/diamondburned/arikawa/v3/voice"
 	"github.com/joho/godotenv"
 )
@@ -27,10 +30,7 @@ func main() {
 	s := session.NewWithIntents("Bot "+config.TOKEN,
 		gateway.IntentGuilds, gateway.IntentGuildVoiceStates, gateway.IntentGuildMessages)
 
-	if s == nil {
-		logger2.Err("Something wrong", err)
-		os.Exit(-1)
-	}
+	states := state.NewFromSession(s, defaultstore.New())
 
 	s.AddHandler(func(c *gateway.MessageCreateEvent) {
 		if c.Author.Bot {
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	if u != nil {
-		log.Println("Bot", u.Username, "is available")
+		logger2.Info("Bot", u.Username, "is available")
 	}
 
 	v, err := voice.NewSession(s)
@@ -64,8 +64,11 @@ func main() {
 		log.Fatalln("failed to create voice session:", err)
 	}
 
-	config.VOICE = v
-	config.DISCORD = s
+	config.NOORI = &noori2.App{
+		VOICE:   v,
+		SESSION: s,
+		STATE:   states,
+	}
 
 	select {}
 }

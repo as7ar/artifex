@@ -3,23 +3,17 @@ package config
 import (
 	"flag"
 
-	"github.com/diamondburned/arikawa/v3/session"
-	"github.com/diamondburned/arikawa/v3/voice"
+	noori2 "github.com/as7ar/noori/noori"
 )
 
 var (
 	// Default Data
-
 	TOKEN       string
+	IsDebug     bool
 	Prefix      string
 	SymbolColor int = 0xffea94
 
-	IsDebug bool
-
-	// System Data
-
-	DISCORD *session.Session
-	VOICE   *voice.Session
+	NOORI *noori2.App
 )
 
 func init() {
