@@ -7,14 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/as7ar/noori/config"
-	"github.com/as7ar/noori/embeds"
 	"github.com/as7ar/noori/logger"
 	"github.com/as7ar/noori/utils"
 	"github.com/diamondburned/arikawa/v3/discord"
 	"github.com/diamondburned/arikawa/v3/gateway"
-	"github.com/diamondburned/arikawa/v3/session"
+	"github.com/diamondburned/arikawa/v3/state"
 	"github.com/diamondburned/arikawa/v3/voice"
+	"github.com/diamondburned/arikawa/v3/voice/voicegateway"
 	"github.com/diamondburned/oggreader"
 )
 
@@ -30,45 +29,54 @@ type VoiceController struct {
 	cancel context.CancelFunc
 }
 
-func RadioCommand(s *session.Session, c *gateway.MessageCreateEvent, url string) {
+func RadioCommand(st *state.State, c *gateway.MessageCreateEvent, url string) {
 	guildID := c.GuildID
-	chatID := c.ChannelID
 
-	vscID, err := utils.GetUserVoiceChannelID(config.NOORI.STATE, guildID, c.Author.ID)
-	if err != nil || vscID == 0 {
-		_, _ = s.SendEmbedReply(chatID, c.Message.ID,
-			embeds.New().
-				Color(config.SymbolColor).
-				Title("🚨 Warning").
-				Description("You must be entered in `voice chat`").Build())
+	vscID, ok := utils.GetUserVoiceChannelID(st, guildID, c.Author.ID)
+	if !ok || vscID == 0 {
 		return
 	}
 
 	guildVoiceManager.Lock()
-	if vc, ok := guildVoiceManager.sessions[guildID]; ok {
+	if vc, exists := guildVoiceManager.sessions[guildID]; exists {
 		vc.cancel()
 		_ = vc.vs.Leave(context.Background())
 		delete(guildVoiceManager.sessions, guildID)
 	}
 	guildVoiceManager.Unlock()
 
-	v, err := voice.NewSession(s)
-	if err != nil {
-		logger.Err("Failed to create voice session", err)
-		return
-	}
+	v := voice.NewSessionCustom(st, c.Author.ID)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if err := v.JoinChannelAndSpeak(ctx, vscID, false, true); err != nil {
-		logger.Err("Failed to join voice channel", err)
+	ready := make(chan struct{})
+	v.AddHandler(func(*voicegateway.ReadyEvent) {
+		close(ready)
+	})
+
+	v.AddHandler(func(e *voice.ReconnectError) {
+		logger.Err("Voice reconnect error:", e.Err)
+	})
+
+	wait := make(chan struct{})
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		close(wait)
+	}()
+	<-wait
+	if err := v.JoinChannelAndSpeak(ctx, vscID, false, false); err != nil {
 		cancel()
+		logger.Err("join failed:", err)
 		return
 	}
 
-	vc := &VoiceController{vs: v, cancel: cancel}
+	<-ready
+
 	guildVoiceManager.Lock()
-	guildVoiceManager.sessions[guildID] = vc
+	guildVoiceManager.sessions[guildID] = &VoiceController{
+		vs:     v,
+		cancel: cancel,
+	}
 	guildVoiceManager.Unlock()
 
 	go func() {
@@ -81,7 +89,7 @@ func RadioCommand(s *session.Session, c *gateway.MessageCreateEvent, url string)
 		}()
 
 		if err := playYT(ctx, v, url); err != nil && !errors.Is(err, context.Canceled) {
-			logger.Err("Failed to play YouTube audio", err)
+			logger.Err("play error:", err)
 		}
 	}()
 }
@@ -92,6 +100,8 @@ func StopCommand(c *gateway.MessageCreateEvent) {
 
 	if vc, ok := guildVoiceManager.sessions[c.GuildID]; ok {
 		vc.cancel()
+		_ = vc.vs.Leave(context.Background())
+		delete(guildVoiceManager.sessions, c.GuildID)
 	}
 }
 

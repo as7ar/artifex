@@ -32,7 +32,7 @@ func CommandHandler(c *gateway.MessageCreateEvent) {
 			return
 		}
 
-		RadioCommand(s, c, parts[1])
+		RadioCommand(config.NOORI.STATE, c, parts[1])
 	case "!stop":
 		StopCommand(c)
 	}

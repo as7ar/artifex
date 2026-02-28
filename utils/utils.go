@@ -7,20 +7,6 @@ import (
 )
 
 func GetUserVoiceChannelID(s *state.State, guildID discord.GuildID, userID discord.UserID) (discord.ChannelID, bool) {
-	/*voiceStates, err := s.Cabinet.VoiceStates(guildID)
-	for _, voiceState := range voiceStates {
-		if !voiceState.ChannelID.IsValid() {
-			return 0, false
-		}
-
-		voiceState.
-	}
-	if err != nil {
-		logger.Err(err)
-		return 0, false
-	}
-
-	return 0, false*/
 
 	voiceState, err := s.Cabinet.VoiceState(guildID, userID)
 	if err != nil {
@@ -28,11 +14,7 @@ func GetUserVoiceChannelID(s *state.State, guildID discord.GuildID, userID disco
 		return 0, false
 	}
 
-	//fmt.Println(voiceState.ChannelID)
-
-	if !voiceState.ChannelID.IsValid() {
-		return 0, false
-	}
+	logger.Debug("vcs found:", voiceState.ChannelID)
 
 	return voiceState.ChannelID, true
 }

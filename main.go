@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"os/signal"
 
 	"github.com/as7ar/noori/commands"
 	"github.com/as7ar/noori/config"
@@ -27,48 +28,28 @@ func main() {
 
 	config.TOKEN = os.Getenv("BOT_TOKEN")
 
-	s := session.NewWithIntents("Bot "+config.TOKEN,
+	st := session.NewWithIntents("Bot "+config.TOKEN,
 		gateway.IntentGuilds, gateway.IntentGuildVoiceStates, gateway.IntentGuildMessages)
 
-	states := state.NewFromSession(s, defaultstore.New())
+	voice.AddIntents(st)
 
-	s.AddHandler(func(c *gateway.MessageCreateEvent) {
-		if c.Author.Bot {
-			return
-		}
-		logger2.Debug("received:", c.Content)
-	})
-	s.AddHandler(commands.CommandHandler)
+	st.AddHandler(commands.CommandHandler)
 
-	if err := s.Open(context.Background()); err != nil {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	if err := st.Open(ctx); err != nil {
 		log.Fatalln("Failed to connect:", err)
 	}
-	defer func(s *session.Session) {
-		err := s.Close()
-		if err != nil {
-			logger2.Err(err)
-		}
-	}(s)
+	defer st.Close()
 
-	u, err := s.Me()
-	if err != nil {
-		log.Fatalln("Failed to get myself:", err)
-	}
-
-	if u != nil {
-		logger2.Info("Bot", u.Username, "is available")
-	}
-
-	v, err := voice.NewSession(s)
-	if err != nil {
-		log.Fatalln("failed to create voice session:", err)
-	}
+	me, _ := st.Me()
+	logger2.Info("Bot ", me.Username, " is available")
 
 	config.NOORI = &noori2.App{
-		VOICE:   v,
-		SESSION: s,
-		STATE:   states,
+		SESSION: st,
+		STATE:   state.NewFromSession(st, defaultstore.New()),
 	}
 
-	select {}
+	<-ctx.Done()
 }
